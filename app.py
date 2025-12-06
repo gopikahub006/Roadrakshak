@@ -15,11 +15,34 @@ if 'hazard_data' not in st.session_state:
     st.session_state['hazard_data'] = None
 if 'analytics_data' not in st.session_state:
     st.session_state['analytics_data'] = None
+if 'selected_city' not in st.session_state: # Ensure city variable is initialized
+    st.session_state['selected_city'] = "Select City..."
 
 # --- 2. TITLE AND HEADER ---
 st.title("🚦 Road Rakshak 2.0")
 st.markdown("**Multimodal AI for Road Safety** | Gemini Launchpad Hackathon")
 st.markdown("---")
+
+# --- GLOBAL CITY SELECTOR (The Easiest Fix) ---
+JURISDICTIONS = ["Select City...", "Hyderabad", "Mumbai", "Delhi", "Bengaluru", "Chennai"]
+
+# User selects the primary jurisdiction
+selected_city = st.selectbox(
+    "📍 Select the Primary Jurisdiction (City) for this Report:",
+    JURISDICTIONS,
+    index=0,
+    key="city_selector"
+)
+
+# Store the selected city in session state (this overwrites the initial value)
+st.session_state['selected_city'] = selected_city
+
+if selected_city == "Select City...":
+    st.warning("Please select a city to begin analysis and filter data.")
+
+st.markdown("---")
+# --- END GLOBAL CITY SELECTOR ---
+
 
 # --- 3. TAB STRUCTURE ---
 # Create tabs for each module
@@ -45,4 +68,3 @@ with tab3:
 
 # --- 4. FOOTER ---
 st.markdown("---")
-st.markdown("Tip: Run Module 1, then Module 2, then Module 3 in order for the report generation to work!")
