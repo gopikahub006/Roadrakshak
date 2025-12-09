@@ -24,7 +24,7 @@ st.markdown("**Multimodal AI for Road Safety** | Gemini Launchpad Hackathon")
 st.markdown("---")
 
 # --- GLOBAL CITY SELECTOR (The Easiest Fix) ---
-JURISDICTIONS = ["Select City...", "Hyderabad", "Mumbai", "Delhi", "Bengaluru", "Chennai"]
+JURISDICTIONS = ["Select City...", "Hyderabad", "Vijayawada", "Bengaluru", "Chennai"]
 
 # User selects the primary jurisdiction
 selected_city = st.selectbox(
@@ -50,19 +50,19 @@ tab1, tab2, tab3 = st.tabs(["1️⃣ Visual Intelligence", "2️⃣ Data Analyti
 
 # --- TAB 1: Visual Intelligence Module (vision_gemini.py) ---
 with tab1:
-    st.subheader("Module 1: Hazard Detection from Images (Gemini Vision)")
+    st.subheader("Module 1: Hazard Detection from Images")
     # Executes the vision_module function from vision_gemini.py
     vision_module()
 
 # --- TAB 2: Data Analytics Module (analytics.py) ---
 with tab2:
-    st.subheader("Module 2: Accident Risk Zone Analysis (Pandas)")
+    st.subheader("Module 2: Accident Risk Zone Analysis ")
     # Executes the analytics_module function from analytics.py
     analytics_module()
 
 # --- TAB 3: Civic Reporting Module (complaint.py) ---
 with tab3:
-    st.subheader("Module 3: Automated Complaint Generation (Gemini Text)")
+    st.subheader("Module 3: Automated Complaint Generation")
     # Executes the complaint_module function from complaint.py
     complaint_module()
 
