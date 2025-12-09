@@ -1,115 +1,216 @@
 import streamlit as st
-from google import genai
-from google.genai import types
-from datetime import datetime
-import json
 import base64
+import urllib.parse
+# Ensure you have your Gemini client imports if you are using the model here
+# from google import genai
+# import os 
 
-# Assume get_gemini_client() is available via a shared helper or copied here
-def get_gemini_client():
-    """Initializes and returns the Gemini client from Streamlit secrets."""
-    try:
-        api_key = st.secrets.get("gemini_api", {}).get("key")
-        if not api_key:
-            return None
-        client = genai.Client(api_key=api_key)
-        return client
-    except Exception:
-        return None
+# --- HELPER FUNCTION: DOWNLOAD BUTTON ---
+def get_download_link(text, filename="Civic_Complaint_Letter.txt", link_text="Download Complaint Letter"):
+    """Generates a downloadable link for the given text content."""
+    b64 = base64.b64encode(text.encode()).decode()
+    href = f'<a href="data:file/txt;base64,{b64}" download="{filename}" style="display: inline-block; padding: 10px 20px; background-color: #2F88D9; color: white; text-align: center; text-decoration: none; border-radius: 5px; font-weight: bold;">{link_text}</a>'
+    return href
 
-def generate_formal_letter(hazard_data: dict, analytics_data: dict, client: genai.Client):
-    """
-    Generates a formal complaint letter using Gemini based on structured input data.
-    """
-    current_date = datetime.now().strftime("%B %d, %Y")
+# --- HELPER FUNCTION: SEND EMAIL BUTTON (mailto) ---
+def get_mailto_link(recipient, subject, body, button_text="Send Email"):
+    """Generates a mailto link that opens the user's default email client."""
     
-    # 1. Extract and format data points
-    potholes = hazard_data.get('potholes', 0)
-    broken_lights = hazard_data.get('broken_lights', 0)
-    location = hazard_data.get('location', 'An unspecified location from image.')
-
-    risk_zone = analytics_data.get('high_risk_zone', 'N/A')
-    total_accidents = analytics_data.get('total_accidents', 'Unknown')
-    peak_time = analytics_data.get('peak_time', 'Unknown')
+    # URL encode the subject and body to handle special characters
+    encoded_subject = urllib.parse.quote(subject)
+    encoded_body = urllib.parse.quote(body)
     
-    # Structure the input for the prompt
-    input_data_string = f"""
-    - **Date of Report:** {current_date}
-    - **Recipient:** The Commissioner, Municipal Corporation
-    - **Primary Hazard Location:** {location}
-    - **Visual Findings:** Detected {potholes} potholes and {broken_lights} broken streetlights.
-    - **Statistical Urgency:** The area, {risk_zone}, is a high-risk zone with {total_accidents} accidents recorded historically. Accidents peak between {peak_time}.
-    """
+    # Construct the mailto URI
+    mailto_uri = f"mailto:{recipient}?subject={encoded_subject}&body={encoded_body}"
+    
+    # Create the link (will be rendered as a blue button via Streamlit Markdown/HTML)
+    link = f'<a href="{mailto_uri}" target="_blank" style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-align: center; text-decoration: none; border-radius: 5px; font-weight: bold;">{button_text}</a>'
+    return link
 
-    # 2. Define the Prompt
-    system_instruction = (
-        "You are an automated Civic Reporter. Generate a professional, formal complaint letter "
-        "to the Municipal Commissioner. The letter must have a clear SUBJECT line, formal salutations, "
-        "and separate body paragraphs detailing the Visual Findings and Statistical Urgency. "
-        "Demand immediate, specific action based on the data provided."
+
+def generate_final_letter(subject, body, analytics_data):
+    """
+    Generates the final formal letter, displays it, and shows action buttons.
+    """
+    # 1. Generate the content (Placeholder for actual Gemini Call)
+    # -----------------------------------------------------------------------------------
+    city = analytics_data.get('city', 'Local City')
+    
+    # Use the edited subject and body for the final template
+    final_letter_content = f"""
+[Your Name/Organization Name - e.g., A Concerned Resident]
+[Your Address]
+[Your City, Postal Code]
+[Your Email Address]
+[Your Phone Number]
+
+December 06, 2025
+
+The Commissioner
+Municipal Corporation
+{city}
+
+SUBJECT: {subject}
+
+Respected Commissioner,
+{body}
+
+Sincerely,
+A Concerned Resident
+"""
+    # -----------------------------------------------------------------------------------
+    
+    # Save the final content to session state
+    st.session_state['final_letter_content'] = final_letter_content
+    
+    # 2. Display the Generated Letter
+    st.success("✅ Formal Complaint Generated!")
+    st.text_area(
+        "Review Final Complaint Letter:", 
+        value=final_letter_content.strip(),
+        height=400,
+        key="final_letter_display"
     )
     
-    user_prompt = f"Using the following input data, generate the complete formal complaint letter. The SUBJECT line must mention the primary location and nature of the issue:\n\n{input_data_string}"
-
-    # 3. Make the API Call
-    try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[user_prompt],
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction
-            )
-        )
-        return response.text
-        
-    except Exception as e:
-        return f"ERROR: Gemini API call failed during letter generation. Reason: {e}"
-
-
-# --- Streamlit Module Function (CALLED BY app.py) ---
-def complaint_module():
-    """Renders the Civic Reporting Module UI."""
-    st.header("3️⃣ Civic Reporting Module")
-    st.markdown("Automatically drafts a formal complaint based on collected data.")
+    # 3. Display Action Buttons
+    st.markdown("---")
+    st.subheader("Action Steps")
     
+    recipient_email = "commissioner@municipalcorp.gov" 
+    
+    col_email, col_download, col_confirm = st.columns([2, 1, 3])
+    
+    # 3a. Send Email Button (Opens External Mail Client)
+    with col_email:
+        mailto_html = get_mailto_link(
+            recipient=recipient_email, 
+            subject=subject, 
+            body=final_letter_content.strip(),
+            button_text="Send Email"
+        )
+        st.markdown(mailto_html, unsafe_allow_html=True)
+    
+    # 3b. Download Button
+    with col_download:
+        # Use the download link helper
+        st.markdown(get_download_link(final_letter_content, link_text="Download"), unsafe_allow_html=True)
+
+    # 3c. Email Confirmation Button (Simulated Popup)
+    with col_confirm:
+        # This button simulates the successful action after the user sends the email externally
+        if st.button("Email Sent Successfully (Click to Confirm)", key="email_confirm", type="primary"):
+            st.balloons()
+            st.toast('Email sent successfully!', icon='📧')
+            st.success("🎉 Email Sent Successfully! Thank you for your civic contribution.")
+
+
+# --- STREAMLIT MODULE FUNCTION ---
+
+def complaint_module():
+    """Renders the complaint generator module with an auto-filled form."""
+
     hazard_data = st.session_state.get('hazard_data')
     analytics_data = st.session_state.get('analytics_data')
     
+    # Check for required data from previous modules
     if not hazard_data or not analytics_data:
-        st.warning("⚠️ Please successfully run Module 1 and Module 2 first.")
-        st.info("Status: Hazard Data Loaded? " + ("✅" if hazard_data else "❌") + 
-                " | Analytics Data Loaded? " + ("✅" if analytics_data else "❌"))
-        return
-    
-    st.success("Inputs Loaded: Ready to generate a data-backed report.")
-    
-    st.subheader("Inputs Summary")
-    st.markdown(f"* **Hazard Location:** {hazard_data.get('location', 'N/A')}")
-    st.markdown(f"* **Risk Zone:** {analytics_data.get('high_risk_zone', 'N/A')}")
-    st.markdown(f"* **Total Accidents:** {analytics_data.get('total_accidents', 'N/A')}")
-    
-    st.markdown("---")
-
-    client = get_gemini_client()
-    if not client:
-        st.error("Cannot connect to Gemini. Check your API key.")
+        st.warning("⚠️ Please run Module 1 (Image Analysis) and Module 2 (Data Analytics) first.")
         return
 
-    if st.button("Generate Formal Complaint Letter", key="run_complaint", use_container_width=True):
-        with st.spinner("Drafting formal letter with Gemini Text Generation..."):
-            complaint_letter = generate_formal_letter(hazard_data, analytics_data, client)
+    # --- 1. Auto-Generate Key Fields ---
+    city = analytics_data.get('city', 'Unknown City')
+    high_risk_zone = analytics_data.get('high_risk_zone', 'Unknown Location')
+    total_accidents = analytics_data.get('total_accidents', 'N/A')
+    potholes_count = hazard_data.get('potholes', 'N/A')
+    hazard_summary = hazard_data.get('ai_summary', 'Road condition summary unavailable.')
+    
+    # Auto-Generated Subject
+    subject_text = f"URGENT: Hazardous Road Conditions (Potholes: {potholes_count}) on {high_risk_zone} ({city})"
+    
+    # Auto-Generated Complaint Body
+    complaint_body_text = f"""
+This letter serves to formally report critical road hazards observed on {high_risk_zone} in {city}.
 
-        if complaint_letter.startswith("ERROR:"):
-            st.error(complaint_letter)
-        else:
-            st.success("✅ Complaint Letter Generated!")
-            st.code(complaint_letter, language='markdown')
-            
-            # Download button
-            st.download_button(
-                label="Download Complaint Letter (.md)",
-                data=complaint_letter,
-                file_name="road_rakshak_complaint.md",
-                mime="text/markdown",
-                use_container_width=True
+Visual Findings:
+{hazard_summary} 
+Our system detected {potholes_count} significant hazards (potholes) in the uploaded image.
+
+Statistical Urgency:
+This section of road is a proven high-risk zone, with records showing a total of {total_accidents} accidents. Immediate repair is necessary to prevent further incidents.
+
+We urge the Municipal Corporation to prioritize the repair of this section.
+"""
+
+    # --- 2. Create and Pre-Fill the Streamlit Form ---
+
+    st.subheader(f"3️⃣ Auto-Generated Complaint for: :blue[{city}]")
+    st.info("Review and edit the details below before generating the final letter.")
+
+    with st.form(key='complaint_form'):
+        st.markdown("### Destination Details")
+        col1, col2 = st.columns(2)
+        
+        col1.text_input("To:", value="The Commissioner, Municipal Corporation", disabled=True)
+        col2.text_input("Destination City:", value=city, disabled=True)
+        
+        st.markdown("### Complaint Details")
+        
+        # Subject Auto-Filled and Editable (Using key for retrieval)
+        edited_subject = st.text_input("Subject:", value=subject_text, key="edited_subject_input")
+        
+        st.text_input("Hazard Location:", value=f"{high_risk_zone}, {city}", disabled=True)
+
+        # Body Auto-Filled and Editable (Using key for retrieval)
+        edited_body = st.text_area("Complaint Body:", value=complaint_body_text.strip(), height=300, key="edited_body_input")
+        
+        st.markdown("### Your Contact Information")
+        col3, col4 = st.columns(2)
+        col3.text_input("Your Name:", value="A Concerned Resident")
+        col4.text_input("Your Email:", value="user@example.com")
+        
+        form_submitted = st.form_submit_button("Generate Final Formal Letter", use_container_width=True, type="primary")
+        
+    # --- 3. Final Letter Generation Trigger ---
+    if form_submitted:
+        # Call the final generation function using the current, edited values from the form
+        generate_final_letter(edited_subject, edited_body, analytics_data)
+        
+    # --- 4. Persistent Display (Optional) ---
+    # This block allows the buttons/letter to persist if the user re-runs the script 
+    # without changing the form content (e.g., clicking the 'Email Sent' button).
+    elif st.session_state.get('final_letter_content'):
+        st.markdown("---")
+        st.info("Last generated complaint is available below.")
+        
+        # Re-display the generated content and buttons
+        subject_for_display = st.session_state.get('final_subject', "Generated Subject")
+        
+        # Display the letter again
+        st.text_area(
+            "Review Final Complaint Letter:", 
+            value=st.session_state['final_letter_content'].strip(),
+            height=400,
+            key="final_letter_display_cached"
+        )
+        
+        # Re-display action buttons without re-generating the content
+        recipient_email = "commissioner@municipalcorp.gov" 
+        col_email, col_download, col_confirm = st.columns([2, 1, 3])
+        
+        with col_email:
+            mailto_html = get_mailto_link(
+                recipient=recipient_email, 
+                subject=subject_for_display, 
+                body=st.session_state['final_letter_content'].strip(),
+                button_text="Send Email"
             )
+            st.markdown(mailto_html, unsafe_allow_html=True)
+        
+        with col_download:
+            st.markdown(get_download_link(st.session_state['final_letter_content'], link_text="Download"), unsafe_allow_html=True)
+
+        with col_confirm:
+            if st.button("Email Sent Successfully (Click to Confirm)", key="email_confirm_cached", type="primary"):
+                st.balloons()
+                st.toast('Email sent successfully!', icon='📧')
+                st.success("🎉 Email Sent Successfully! Thank you for your civic contribution.")
